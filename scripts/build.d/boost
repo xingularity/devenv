@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+
+set -e
+
+SRCSYNC=${SRCSYNC:-tarball}
+
+pkgname=boost
+
+if [ "${SRCSYNC}" == "tarball" ] ; then
+
+  pkgver=${VERSION:-1.89.0}
+  pkgfilesuffix=${VERSION:-1_89_0}
+  pkgfull=${pkgname}_${pkgfilesuffix}
+  pkgfn=${pkgfull}.tar.gz
+  pkgurl=https://archives.boost.io/release/${pkgver}/source/${pkgfn}
+
+  download_md5 $pkgfn $pkgurl 187b577ce9f485314fcf17bcba2fb542
+
+  mkdir -p ${DEVENVFLAVORROOT}/${DEVENVFLAVOR}/src
+  pushd ${DEVENVFLAVORROOT}/${DEVENVFLAVOR}/src > /dev/null
+    tar xf ${DEVENVDLROOT}/$pkgfn
+  popd > /dev/null
+
+elif [ "${SRCSYNC}" == "git" ] ; then
+
+  pkgbranch=${VERSION:-master}
+  pkgfull=$pkgname
+
+  # unpack (clone)
+  syncgit https://github.com/boostorg ${pkgname} ${pkgbranch}
+
+else
+
+  devenv_display -e "Invalid \${SRCSYNC} ${SRCSYNC}"
+  exit
+
+fi
+
+# build.
+
+cfgcmd=("./bootstrap.sh")
+cfgcmd+=(" --prefix=${DEVENVPREFIX}")
+
+
+b2cmd=("./b2")
+
+b2instcmd=("./b2")
+b2instcmd+=(" install")
+b2instcmd+=(" --prefix=${DEVENVPREFIX}")
+b2instcmd+=(" -j$(nproc)")
+
+pushd ${DEVENVFLAVORROOT}/${DEVENVFLAVOR}/src/${pkgfull} > /dev/null
+
+  buildcmd config.log "${cfgcmd[@]}"
+  buildcmd build.log "${b2cmd[@]}"
+  buildcmd install.log "${b2instcmd[@]}"
+
+popd > /dev/null
+
+# vim: set et nobomb ft=bash ff=unix fenc=utf8:
